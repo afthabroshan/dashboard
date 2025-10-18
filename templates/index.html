@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Sales Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+
+<body class="bg-gray-50 font-sans">
+
+    <nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0 flex items-center">
+                    <i class="fas fa-chart-line text-blue-600 text-2xl mr-2"></i>
+                    <a href="/" class="text-2xl font-bold text-gray-800">SalesDash</a>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="/" class="bg-blue-100 text-blue-700 px-3 py-2 rounded-md text-sm font-medium"
+                            aria-current="page">Home</a>
+                        <a href="/ai"
+                            class="text-gray-500 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">AI
+                            Assistant</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Upload & Analyze</h1>
+                <p class="text-gray-500 mb-4">Upload your sales & stock Excel file to generate the advanced dashboard.
+                </p>
+                <form action="/" method="post" enctype="multipart/form-data">
+                    <input type="file" name="file" accept=".xls,.xlsx" required class="w-full text-sm text-gray-500 
+                               file:mr-4 file:py-2 file:px-4 
+                               file:rounded-full file:border-0 
+                               file:text-sm file:font-semibold 
+                               file:bg-blue-50 file:text-blue-700 
+                               hover:file:bg-blue-100" />
+                    <button type="submit"
+                        class="mt-4 px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition">
+                        Generate Dashboard
+                    </button>
+                </form>
+                {% if error %}
+                <p class="mt-4 text-red-600 bg-red-100 p-3 rounded-md">
+                    <strong>Error:</strong> {{ error }}
+                </p>
+                {% endif %}
+            </div>
+
+            {% if data %}
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Dashboard Overview</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                    <h3 class="text-gray-500 text-sm font-medium">Total Products</h3>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ data.kpis.total_products }}</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                    <h3 class="text-gray-500 text-sm font-medium">Purchase Quantity</h3>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ data.kpis.purchase_qty }}</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                    <h3 class="text-gray-500 text-sm font-medium">Sales Quantity</h3>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ data.kpis.sales_qty }}</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                    <h3 class="text-gray-500 text-sm font-medium">Stock Quantity</h3>
+                    <p class="text-3xl font-bold text-gray-900 mt-1">{{ data.kpis.stock_qty }}</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                    <h3 class="text-gray-500 text-sm font-medium">Avg. Sales %</h3>
+                    <p class="text-3xl font-bold text-green-600 mt-1">{{ data.kpis.avg_sales_percent }}%</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                    <h3 class="text-gray-500 text-sm font-medium">Low-Stock Items</h3>
+                    <p class="text-3xl font-bold text-red-500 mt-1">{{ data.kpis.low_stock_items }}</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                <div class="bg-white p-6 rounded-lg shadow-sm border">
+                    <h3 class="font-semibold text-gray-800 mb-4">Inventory Status</h3>
+                    <canvas id="inventoryStatusChart"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-sm border">
+                    <h3 class="font-semibold text-gray-800 mb-4">Product Performance</h3>
+                    <canvas id="performanceChart"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-sm border">
+                    <h3 class="font-semibold text-gray-800 mb-4">Stock by Category</h3>
+                    <canvas id="categoryStockChart"></canvas>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="bg-white p-6 rounded-lg shadow-sm border">
+                    <h3 class="font-semibold text-gray-800 mb-4">Branch: Stock vs Sales</h3>
+                    <canvas id="branchStockSalesChart"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-sm border">
+                    <h3 class="font-semibold text-gray-800 mb-4">Top 10 Oldest Products (by Ageing Days)</h3>
+                    <canvas id="ageingChart"></canvas>
+                </div>
+            </div>
+
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Detailed Product Lists</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="bg-white rounded-lg shadow-sm border overflow-hidden">
+                    <h3 class="font-semibold text-gray-800 p-4 border-b">Top 10 In-Transit Products</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-600">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3">Part Number</th>
+                                    <th class="px-6 py-3">Name</th>
+                                    <th class="px-6 py-3">Transit Qty</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in data.top_10_transit %}
+                                <tr class="bg-white border-b hover:bg-gray-50">
+                                    <td class="px-6 py-4 font-medium">{{ row['PART NUMBER'] }}</td>
+                                    <td class="px-6 py-4">{{ row['NAME'] }}</td>
+                                    <td class="px-6 py-4 font-bold">{{ row['TRANSIT'] }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+
+    <script>
+        // Global placeholder
+        let dashboardData = null;
+    </script>
+
+    {% if data %}
+    <script>
+        try {
+            dashboardData = JSON.parse(`{{ data | tojson | safe }}`);
+        } catch (err) {
+            console.error("Data parsing failed:", err);
+            dashboardData = null;
+        }
+    </script>
+    {% endif %}
+
+    <script>
+        if (dashboardData) {
+            const chartColors = [
+                '#FF6384', '#36A2EB', '#FFCE56',
+                '#4BC0C0', '#9966FF', '#FF9F40',
+                '#C9CBCF', '#4D5360'
+            ];
+
+            // Inventory Status Chart
+            const inventoryCtx = document.getElementById('inventoryStatusChart');
+            if (inventoryCtx && dashboardData.inventory_status_chart) {
+                new Chart(inventoryCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: dashboardData.inventory_status_chart.labels,
+                        datasets: [{
+                            data: dashboardData.inventory_status_chart.data,
+                            backgroundColor: chartColors
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+
+            // Performance Chart
+            const performanceCtx = document.getElementById('performanceChart');
+            if (performanceCtx && dashboardData.performance_chart) {
+                new Chart(performanceCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: dashboardData.performance_chart.labels,
+                        datasets: [{
+                            data: dashboardData.performance_chart.data,
+                            backgroundColor: chartColors
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+
+            // Category Chart
+            const categoryCtx = document.getElementById('categoryStockChart');
+            if (categoryCtx && dashboardData.category_chart) {
+                new Chart(categoryCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: dashboardData.category_chart.labels,
+                        datasets: [{
+                            data: dashboardData.category_chart.data,
+                            backgroundColor: chartColors
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+
+            // Branch Chart
+            const branchCtx = document.getElementById('branchStockSalesChart');
+            if (branchCtx && dashboardData.branch_chart) {
+                new Chart(branchCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: dashboardData.branch_chart.labels,
+                        datasets: [
+                            {
+                                label: 'Stock',
+                                data: dashboardData.branch_chart.stock_data,
+                                backgroundColor: 'rgba(54, 162, 235, 0.6)'
+                            },
+                            {
+                                label: 'Sales',
+                                data: dashboardData.branch_chart.sales_data,
+                                backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                            }
+                        ]
+                    },
+                    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
+                });
+            }
+
+            // Ageing Chart
+            const ageingCtx = document.getElementById('ageingChart');
+            if (ageingCtx && dashboardData.ageing_chart) {
+                new Chart(ageingCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: dashboardData.ageing_chart.labels,
+                        datasets: [{
+                            label: 'Ageing Days',
+                            data: dashboardData.ageing_chart.data,
+                            backgroundColor: 'rgba(255, 99, 132, 0.6)'
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return `${context.dataset.label}: ${context.parsed.x} days`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    </script>
+
+</body>
+
+</html>
