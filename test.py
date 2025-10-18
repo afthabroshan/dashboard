@@ -8,9 +8,6 @@ print("--- Starting Hugging Face Connection Test ---")
 # 1. Load the .env file
 load_dotenv()
 
-# 2. Get the token from the environment
-hf_token = "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"
-
 # 3. Verify that the token was loaded
 if hf_token:
     # Print a confirmation without showing the whole key
