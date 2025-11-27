@@ -11,6 +11,31 @@ DB_NAME = "Kosko_staging" # Replace with your actual database name
 DB_USER =  "postgres"# Replace with your actual username
 DB_PASS = "12345" # Replace with your actual password
 
+from queries.daily_sales_report import (
+    Daily_Sales_report_DXB,
+    Daily_Sales_report_Jed,
+    Daily_Sales_report_Dmm,
+    Daily_Sales_report_Ryd,
+    Daily_Sales_report_AXA
+)
+from queries.customer_report import (
+    monthly_sales_report_MSCT,
+    monthly_sales_report_Salalah,
+    monthly_sales_report_Bahrain,
+    monthly_sales_report_JED,
+    monthly_sales_report_AXA,
+    monthly_sales_report_RUH,
+    monthly_sales_report_DMM,
+)
+
+from queries.total_sales_report import (
+    total_sales_report_Oman,
+)
+
+from queries.own_brand_stock import (
+    obs,
+)
+
 # Use st.cache_resource to only create the connection once
 # @st.cache_resource
 def init_connection():
@@ -47,54 +72,182 @@ def run_query_df(query):
 # --- Streamlit App ---
 
 st.set_page_config(layout="wide") # Use the full page width
-st.title("Sales Order Lines")
+st.title("Enterprise Dashboard")
 
-# Define the SQL query
-sql_query = """
-WITH raw_orders AS (
-    SELECT DISTINCT
-        so.date_order,
-        ct.name::text AS team_name,
-        so.amount_untaxed
-    FROM
-        sale_order_line AS sol
-        JOIN sale_order AS so ON sol.order_id = so.id
-        JOIN crm_team AS ct ON so.team_id = ct.id
-    WHERE
-        sol.state = 'sale'
-        AND so.date_order BETWEEN '2025-07-01'::date AND '2025-08-01'::date
-        and so.company_id = 1
-)
+if st.button("Go to Executive Dashboard"):
+    st.switch_page("pages/Dashboard.py")
+
+
+
+sales_man_report = """
 SELECT
-    CASE 
-        WHEN GROUPING(DATE(date_order)) = 1 THEN 'TOTAL'
-        ELSE TO_CHAR(DATE(date_order), 'YYYY-MM-DD')
-    END AS "DATE",
-    SUM(CASE WHEN team_name::jsonb ->> 'en_US' = 'DUBAI' THEN amount_untaxed ELSE 0 END) AS "KSK DXB",
-    SUM(CASE WHEN team_name::jsonb ->> 'en_US' = 'SHARJAH' THEN amount_untaxed ELSE 0 END) AS "KSK SHARJAH",
-    SUM(CASE WHEN team_name::jsonb ->> 'en_US' = 'AJMAN' THEN amount_untaxed ELSE 0 END) AS "KSK AJMAN",
-    SUM(CASE WHEN team_name::jsonb ->> 'en_US' = 'ABU DHABI' THEN amount_untaxed ELSE 0 END) AS "KSK AUH",
-    SUM(amount_untaxed) AS "TOTAL SALE"
-FROM
-    raw_orders
-GROUP BY ROLLUP (DATE(date_order))
+    -- Changed this column to only show Salesman
+    COALESCE(rp.name, 'Unassigned Salesman') AS "SALES MAN",
+    
+    -- All SUMs remain the same
+    SUM(m."TOTAL INV AMT") AS "TOTAL INV AMT",
+    SUM(m."RETURN BILL AMT") AS "RETURN BILL AMT",
+    (SUM(m."TOTAL INV AMT") - SUM(m."RETURN BILL AMT")) AS "CURRENT INV AMOUNT",
+    SUM(m."SECURITY CHQ") AS "SECURITY CHQ",
+    SUM(m."CHEQUE") AS "CHEQUE",
+    SUM(m."CASH") AS "CASH"
+FROM (
+    -- ---- Block 1: Invoices/Returns ----
+    SELECT
+        am.invoice_user_id AS user_id,
+        am.area_id,
+        SUM(CASE WHEN am.move_type = 'out_invoice' THEN am.amount_total ELSE 0 END) AS "TOTAL INV AMT",
+        SUM(CASE WHEN am.move_type = 'out_refund' THEN am.amount_total ELSE 0 END) AS "RETURN BILL AMT",
+        0 AS "CASH",
+        0 AS "CHEQUE",
+        0 AS "SECURITY CHQ"
+    FROM
+        account_move AS am
+    WHERE
+        am.move_type IN ('out_invoice', 'out_refund')
+        -- !!! ADD YOUR DATE FILTER HERE
+        -- AND am.invoice_date BETWEEN '2025-01-01' AND '2025-01-31'
+    GROUP BY
+        am.invoice_user_id, am.area_id
+ 
+    UNION ALL
+ 
+    -- ---- Block 2: Cash/Cheque Payments ----
+    SELECT
+        ap.user_id,
+        p.area_id,
+        0 AS "TOTAL INV AMT",
+        0 AS "RETURN BILL AMT",
+        SUM(CASE WHEN aj.type = 'cash' THEN ap.amount ELSE 0 END) AS "CASH",
+        SUM(CASE WHEN aj.type = 'bank' THEN ap.amount ELSE 0 END) AS "CHEQUE",
+        0 AS "SECURITY CHQ"
+    FROM
+        account_payment AS ap
+    JOIN
+        account_payment_method_line AS apml ON ap.payment_method_line_id = apml.id
+    JOIN
+        account_journal AS aj ON apml.journal_id = aj.id
+    JOIN
+        res_partner AS p ON ap.partner_id = p.id
+    WHERE
+        ap.payment_type = 'inbound' -- Customer Payments
+        -- !!! ADD YOUR DATE FILTER HERE
+        -- AND ap.date BETWEEN '2025-01-01' AND '2025-01-31'
+    GROUP BY
+        ap.user_id, p.area_id
+ 
+    UNION ALL
+ 
+    -- ---- Block 3: Security Cheques (PDC) ----
+    SELECT
+        CAST(NULL AS INTEGER) AS user_id,
+        p.area_id,
+        0 AS "TOTAL INV AMT",
+        0 AS "RETURN BILL AMT",
+        0 AS "CASH",
+        0 AS "CHEQUE",
+        SUM(pdc.amount) AS "SECURITY CHQ"
+    FROM
+        pdc_payment AS pdc
+    JOIN
+        res_partner AS p ON pdc.partner_id = p.id
+     WHERE
+    --    pdc.state = 'posted' -- Assuming 'posted' or similar
+        -- !!! ADD YOUR DATE FILTER HERE
+          pdc.due_date BETWEEN '2025-05-01' AND '2025-08-1'
+    GROUP BY
+        p.area_id
+) AS m
+LEFT JOIN
+    res_users AS ru ON m.user_id = ru.id
+LEFT JOIN
+    res_partner AS rp ON ru.partner_id = rp.id
+LEFT JOIN
+    area_master AS am ON m.area_id = am.id
+GROUP BY
+    rp.name -- Changed: Group only by Salesman
 ORDER BY
-    DATE(date_order) NULLS LAST;
-        
+    rp.name NULLS FIRST; -- Changed: Sort only by Salesman
 """
 
-# Fetch data into a Pandas DataFrame
-df_sales = run_query_df(sql_query)
 
-if not df_sales.empty:
-    st.write("Displaying Daily Sales Report (using Order Totals)")
 
-    # Display the DataFrame as a table
-    st.dataframe(df_sales, use_container_width=True) # Makes the table use full width
+def display_data_tab(query, tab_name):
+    """Helper function to display data in a tab."""
+    st.subheader(f"Data for {tab_name}")
+    df = run_query_df(query)
+    if not df.empty:
+        st.dataframe(df, use_container_width=True)
+        st.write(f"Total rows: {len(df)}")
+    else:
+        if conn:
+            st.info("No data found.")
 
-    st.write(f"Total days with sales: {len(df_sales)-1}")
-else:
-     if conn: # Only show this if the connection was successful but no data was returned
-        st.write("No sales data found for the specified date range.")
+# --- Layout Structure ---
 
-# Note: No need to explicitly close the connection when using st.cache_resource
+# 1. Sales Section
+st.header("Daily Sales Report")
+sales_tabs = st.tabs(["DXB", "JED", "DMM", "RYD", "AXA"])
+
+with sales_tabs[0]:
+    display_data_tab(Daily_Sales_report_DXB, "DXB")
+
+with sales_tabs[1]:
+    display_data_tab(Daily_Sales_report_Jed, "JED")
+
+with sales_tabs[2]:
+    display_data_tab(Daily_Sales_report_Dmm, "DMM")
+
+with sales_tabs[3]:
+    display_data_tab(Daily_Sales_report_Ryd, "RYD")
+
+with sales_tabs[4]:
+    display_data_tab(Daily_Sales_report_AXA, "AXA")
+
+st.markdown("---") # Separator
+
+# 2. Products Section
+st.header("Monthly Sales")
+product_tabs = st.tabs(["MSCT", "Salalah", "Bahrain", "JED", "AXA", "RUH", "DMM"])
+
+with product_tabs[0]:
+    display_data_tab(monthly_sales_report_MSCT, "MSCT")
+
+with product_tabs[1]:
+    display_data_tab(monthly_sales_report_Salalah, "Salalah")
+
+with product_tabs[2]:
+    display_data_tab(monthly_sales_report_Bahrain, "Bahrain")
+
+with product_tabs[3]:
+    display_data_tab(monthly_sales_report_JED, "JED")
+
+with product_tabs[4]:
+    display_data_tab(monthly_sales_report_AXA, "AXA")
+
+with product_tabs[5]:
+    display_data_tab(monthly_sales_report_RUH, "RUH")
+
+with product_tabs[6]:
+    display_data_tab(monthly_sales_report_DMM, "DMM")
+
+st.markdown("---") # Separator
+
+# 3. Sales man Section
+st.header("Total Sales Report")
+dummy_tabs = st.tabs([ "Oman","UAE", "Saudi"])
+
+with dummy_tabs[0]:
+    display_data_tab(total_sales_report_Oman, "Oman")
+
+with dummy_tabs[1]:
+    display_data_tab(total_sales_report_Oman, "UAE")
+
+with dummy_tabs[2]:
+    display_data_tab(total_sales_report_Oman, "Saudi")
+
+st.markdown("---") # Separator
+
+# 4. Own Brand Stock
+st.header("Own Brand Stock")
+display_data_tab(obs, "Own Brand Stock")
