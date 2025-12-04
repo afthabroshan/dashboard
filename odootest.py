@@ -36,6 +36,31 @@ from queries.own_brand_stock import (
     obs,
 )
 
+from queries.sales_man_monthly import (
+    sales_man_monthly_DXB,
+    sales_man_monthly_APEX,
+    sales_man_monthly_Main_land,
+    sales_man_monthly_Muscut,
+    sales_man_monthly_Bahrine,
+    sales_man_monthly_Jeddah,
+    sales_man_monthly_dammam,
+    sales_man_monthly_riyadh,
+    sales_man_monthly_axa,
+    sales_man_monthly_salah,
+)
+
+from queries.sales_man_daily import (
+    sales_man_daily_UAE,
+    sales_man_daily_APEX,
+    sales_man_daily_Main_Land,
+    sales_man_daily_Muscat,
+    sales_man_daily_Bahrine,
+    sales_man_daily_Jeddah,
+    sales_man_daily_Dammam,
+    sales_man_daily_Riyadh,
+    sales_man_daily_AXA,
+    sales_man_daily_Salah,
+)
 # Use st.cache_resource to only create the connection once
 # @st.cache_resource
 def init_connection():
@@ -251,3 +276,77 @@ st.markdown("---") # Separator
 # 4. Own Brand Stock
 st.header("Own Brand Stock")
 display_data_tab(obs, "Own Brand Stock")
+
+#4. Sales_man Montly
+st.markdown("---") # Separator
+st.header("Sales_man Monthly Report")
+dummy_tabs = st.tabs([ "UAE","Jafza", "Main Land", "Muscat", "Bahrain", "Jeddah", "Dammam", "Riyadh", "AXA", "Salalah"])
+
+
+with dummy_tabs[0]:
+    display_data_tab(sales_man_monthly_DXB, "UAE")
+
+with dummy_tabs[1]:
+    display_data_tab(sales_man_monthly_APEX, "Jafza")
+
+with dummy_tabs[2]:
+    display_data_tab(sales_man_monthly_Main_land, "Main Land")
+
+with dummy_tabs[3]:
+    display_data_tab(sales_man_monthly_Muscut, "Muscat")
+
+with dummy_tabs[4]:
+    display_data_tab(sales_man_monthly_Bahrine, "Bahrain")
+
+with dummy_tabs[5]:
+    display_data_tab(sales_man_monthly_Jeddah, "Jeddah")
+
+with dummy_tabs[6]:
+    display_data_tab(sales_man_monthly_dammam, "Dammam")
+
+with dummy_tabs[7]:
+    display_data_tab(sales_man_monthly_riyadh, "Riyadh")
+
+with dummy_tabs[8]:
+    display_data_tab(sales_man_monthly_axa, "AXA")
+
+with dummy_tabs[9]:
+    display_data_tab(sales_man_monthly_salah, "Salalah")
+
+
+
+    #4. Sales_man Daily
+st.markdown("---") # Separator
+st.header("Sales_man Daily Report")
+dummy_tabs = st.tabs([ "UAE","Jafza", "Main Land", "Muscat", "Bahrain", "Jeddah", "Dammam", "Riyadh", "AXA", "Salalah"])
+
+
+with dummy_tabs[0]:
+    display_data_tab(sales_man_daily_UAE, "UAE")
+
+with dummy_tabs[1]:
+    display_data_tab(sales_man_daily_APEX, "Jafza")
+
+with dummy_tabs[2]:
+    display_data_tab(sales_man_daily_Main_Land, "Main Land")
+
+with dummy_tabs[3]:
+    display_data_tab(sales_man_daily_Muscat, "Muscat")
+
+with dummy_tabs[4]:
+    display_data_tab(sales_man_daily_Bahrine, "Bahrain")
+
+with dummy_tabs[5]:
+    display_data_tab(sales_man_daily_Jeddah, "Jeddah")
+
+with dummy_tabs[6]:
+    display_data_tab(sales_man_daily_Dammam, "Dammam")
+
+with dummy_tabs[7]:
+    display_data_tab(sales_man_daily_Riyadh, "Riyadh")
+
+with dummy_tabs[8]:
+    display_data_tab(sales_man_daily_AXA, "AXA")
+
+with dummy_tabs[9]:
+    display_data_tab(sales_man_daily_Salah, "Salalah")
